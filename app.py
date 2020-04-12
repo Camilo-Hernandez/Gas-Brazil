@@ -25,9 +25,11 @@ encabezado = html.Div([html.H2(['Precios de la gasolina en Brasil']),
 						], className = "encabezado")
 
 banner = html.Div([
-				html.Img(id='img-udea',src = "/assets/Logo_UdeA.png"),
-				html.Img(id='img-semillero',src = "/assets/failed_logo_semillero.png"),
+                html.Img(id='img-fondo',src = "/assets/fondo1.png"),
+                html.Img(id='img-gasolina',src = "/assets/gas.png"),
 				encabezado,
+                html.Img(id='img-udea',src = "/assets/Logo_UdeA.png"),
+                html.Img(id='img-semillero',src = "/assets/failed_logo_semillero.png"),
                 html.Div(className='clear')
         ], className = "banner")
 row_1 = html.Div([
@@ -41,14 +43,18 @@ row_1 = html.Div([
                         value = df.producto.unique()[0],
                         id = 'producto',
                     ),className='style_productos'),
+                html.Div(dcc.Dropdown(
+                        options=[{'label':i,'value':i} for i in df.ano.unique()],
+                        value = df.ano.unique()[0],
+                        id ='ano',
+                    ),className='style_ano'),
                 html.Div([dcc.Graph(className = 'style_grafica',id = 'figura1')]),
                 html.Div([dcc.Graph(className = 'style_grafica',id = 'figura3')]),
                 html.Div([dcc.Graph(className = 'style_grafica',id = 'figura2')]),
-                html.Div(html.H2(['Indicador 4']),className='style_grafica'),      
+                html.Div([dcc.Graph(className = 'style_grafica',id = 'figura4')]),
                 html.Div(className='clear')
         ],className = 'style_row_1')
 row_2 = html.Div([
-                html.Div(html.H2(['Texto']),className='style_E'),
                 html.Div(dcc.Dropdown(
                         options=[{'label':i,'value':i} for i in df.region.unique()],
                         value = df.region.unique()[0],
@@ -68,15 +74,17 @@ app.layout = html.Div([banner,row_1,row_2],className = "main")
 @app.callback([
     Output(component_id ='figura1', component_property ='figure'),
     Output(component_id ='figura2', component_property ='figure'),
-    Output(component_id ='figura3', component_property ='figure')
+    Output(component_id ='figura3', component_property ='figure'),
+    Output(component_id ='figura4', component_property ='figure')
     ],
 
     [
     Input(component_id='estado', component_property='value'),
     Input(component_id='producto',component_property='value'),
+    Input(component_id='ano', component_property='value'),
     ])
 
-def grafica(estado,producto):
+def grafica(estado,producto,ano):
     traces = [go.Scatter(x=df_ano, y=list(df[(df.producto == producto) & (df.estado == estado)].groupby(['ano','estado'])['precio_min_reventa'].agg('sum')),name='Min'),
                   go.Scatter(x=df_ano, y=list(df[(df.producto == producto) & (df.estado == estado)].groupby(['ano','estado'])['precio_medio_reventa'].agg('sum')),name='Medio'),
                   go.Scatter(x=df_ano, y=list(df[(df.producto == producto) & (df.estado == estado)].groupby(['ano','estado'])['precio_max_reventa'].agg('sum')),name='Max')
@@ -86,11 +94,13 @@ def grafica(estado,producto):
                   go.Scatter(x=df_ano, y=list(df[(df.producto == producto) & (df.estado == estado)].groupby(['ano','estado'])['precio_max_distribucion'].agg('sum')),name='Max')
                   ]
     traces3 = go.Bar(x=df_ano, y=list(df[(df.producto == producto) & (df.estado == estado)].groupby(['ano','estado'])['num_postes_revisados'].agg('sum')),name='Postes revisados')
+    traces4 = go.Bar(x=df_mes, y=list(df[(df.producto == producto) & (df.estado == estado) & (df.ano == ano)].groupby(['mes','estado'])['num_postes_revisados'].agg('sum')),name='Postes revisados')
 
     fig = go.Figure(data = traces)
     fig2 = go.Figure(data = traces2)
     fig3 = go.Figure(data = traces3)
-    
+    fig4 = go.Figure(data = traces4)
+
     fig.update_layout(
         margin = {'l':0,'r':0,'t':0,'b':0},
         xaxis=dict(
@@ -126,7 +136,19 @@ def grafica(estado,producto):
         )
     )
     fig3.update_traces(opacity=0.7)
-    return(fig,fig2,fig3)
+    fig4.update_layout(
+        margin = {'l':0,'r':0,'t':0,'b':0},
+        xaxis=dict(
+            title_text="Mes",
+            ticktext=["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre","enero","febrero","marzo","abril"],
+            tickvals=df_mes
+        ),
+        yaxis=dict(
+            title_text="# de estaciones revisadas",
+        )
+    )
+    fig4.update_traces(opacity=0.7)
+    return(fig,fig2,fig3,fig4)
 
 @app.callback(
             # [
@@ -151,8 +173,8 @@ def grafica2(region):
         yaxis=dict(
             title_text="Precio    medio de reventa",
         ))
-    
+
     return(fig)
 
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    app.run_server(debug=True, port=8050)
